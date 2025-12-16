@@ -1,0 +1,7 @@
+{
+  "name": "StarkFolio",
+  "description": "A 3D cinematic developer portfolio inspired by Iron Man, featuring a 3D interactive scene, smooth scrolling, and a Jarvis AI assistant.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
