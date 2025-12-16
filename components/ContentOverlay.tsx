@@ -93,8 +93,8 @@ const ContentOverlay: React.FC = () => {
     playClickSound();
     speak("Downloading secure personnel file.");
     const link = document.createElement('a');
-    link.href = '/cv.pdf'; 
-    link.download = 'Swopnil_Developer_CV.pdf';
+    link.href = '/pranilpoudelcv.pdf';
+    link.download = 'pranilpoudelcv.pdf';
     document.body.appendChild(link);
     link.click(); // Trigger the download
     setTimeout(() => document.body.removeChild(link), 100);
