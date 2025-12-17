@@ -92,13 +92,13 @@ const ContentOverlay: React.FC = () => {
   const handleDownloadCV = () => {
     playClickSound();
     speak("Downloading secure personnel file.");
-    const filePath = '/pranilpoudelcv.pdf';
+    const filePath = '/ashish%20dhamala%20cv.pdf';
 
     // Primary: create anchor and click
     try {
       const link = document.createElement('a');
       link.href = filePath;
-      link.download = 'pranilpoudelcv.pdf';
+      link.download = 'ashish dhamala cv.pdf';
       document.body.appendChild(link);
       link.click();
       setTimeout(() => document.body.removeChild(link), 150);
@@ -114,7 +114,7 @@ const ContentOverlay: React.FC = () => {
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'pranilpoudelcv.pdf';
+          a.download = 'ashish dhamala cv.pdf';
           document.body.appendChild(a);
           a.click();
           setTimeout(() => {
