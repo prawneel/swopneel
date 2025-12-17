@@ -13,6 +13,8 @@ const AdminPanel: React.FC = () => {
   
   // UI State
   const [activeTab, setActiveTab] = useState<'projects' | 'skills'>('projects');
+  const [cvVersion, setCvVersion] = useState<number>(1);
+  const [cvUploading, setCvUploading] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [editingSkillIndex, setEditingSkillIndex] = useState<number>(-1);
@@ -21,6 +23,14 @@ const AdminPanel: React.FC = () => {
     // Load data when authentication is successful or initially to verify integrity
     setProjects(getProjects());
     setSkills(getSkills());
+
+    // load cv version
+    try {
+      // lazy-import to avoid SSR issues
+      import('../services/cvService').then(mod => {
+        setCvVersion(mod.getCVVersion());
+      }).catch(() => {});
+    } catch (e) {}
   }, [isAuthenticated]);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -172,16 +182,22 @@ const AdminPanel: React.FC = () => {
         {/* TABS */}
         <div className="flex gap-4 mb-8">
             <button 
-                onClick={() => { setActiveTab('projects'); setEditingProject(null); setEditingSkill(null); }}
+              onClick={() => { setActiveTab('projects'); setEditingProject(null); setEditingSkill(null); }}
                 className={`px-6 py-2 border ${activeTab === 'projects' ? 'bg-cyan-500 text-black border-cyan-500' : 'bg-transparent text-cyan-500 border-cyan-500'}`}
             >
                 PROJECTS
             </button>
             <button 
-                onClick={() => { setActiveTab('skills'); setEditingProject(null); setEditingSkill(null); }}
-                className={`px-6 py-2 border ${activeTab === 'skills' ? 'bg-cyan-500 text-black border-cyan-500' : 'bg-transparent text-cyan-500 border-cyan-500'}`}
+              onClick={() => { setActiveTab('skills'); setEditingProject(null); setEditingSkill(null); }}
+              className={`px-6 py-2 border ${activeTab === 'skills' ? 'bg-cyan-500 text-black border-cyan-500' : 'bg-transparent text-cyan-500 border-cyan-500'}`}
             >
-                TECH STACK / SKILLS
+              TECH STACK / SKILLS
+            </button>
+            <button
+              onClick={() => { setActiveTab('cv' as any); setEditingProject(null); setEditingSkill(null); }}
+              className={`px-6 py-2 border ${activeTab === ('cv' as any) ? 'bg-cyan-500 text-black border-cyan-500' : 'bg-transparent text-cyan-500 border-cyan-500'}`}
+            >
+              CV
             </button>
         </div>
 
@@ -335,6 +351,80 @@ const AdminPanel: React.FC = () => {
                     </div>
                 )}
             </>
+        )}
+
+        {/* --- CV TAB --- */}
+        {activeTab === ('cv' as any) && (
+          <div className="bg-gray-900/50 p-6 border border-cyan-500 mb-8 max-w-2xl">
+            <h2 className="text-xl text-white mb-4">Manage CV</h2>
+            <p className="text-gray-400 text-sm mb-4">Current version: <span className="font-bold text-cyan-400">{cvVersion}</span></p>
+
+            <div className="mb-4">
+              <label className="block mb-2 text-xs text-gray-500">Upload PDF (drop or choose file)</label>
+              <div
+                onDrop={async (e) => {
+                  e.preventDefault();
+                  const f = e.dataTransfer?.files?.[0];
+                  if (!f) return;
+                  if (f.type !== 'application/pdf') { alert('Please upload a PDF'); return; }
+                  setCvUploading(true);
+                  const mod = await import('../services/cvService');
+                  await mod.saveCV(f);
+                  const ver = mod.bumpCVVersion();
+                  setCvVersion(ver);
+                  setCvUploading(false);
+                  alert('CV uploaded and version updated to ' + ver);
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                className="w-full border-2 border-dashed border-gray-700 p-6 rounded text-center text-gray-500 bg-black/40"
+              >
+                {cvUploading ? 'Uploading...' : 'Drop PDF here or click to choose'}
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    if (f.type !== 'application/pdf') { alert('Please upload a PDF'); return; }
+                    setCvUploading(true);
+                    const mod = await import('../services/cvService');
+                    await mod.saveCV(f);
+                    const ver = mod.bumpCVVersion();
+                    setCvVersion(ver);
+                    setCvUploading(false);
+                    alert('CV uploaded and version updated to ' + ver);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={async () => {
+                  const mod = await import('../services/cvService');
+                  const stored = await mod.getCV();
+                  if (!stored) { alert('No uploaded CV found'); return; }
+                  const url = URL.createObjectURL(stored.file as Blob);
+                  window.open(url, '_blank');
+                  setTimeout(() => URL.revokeObjectURL(url), 3000);
+                }}
+                className="bg-cyan-600 px-4 py-2"
+              >Preview CV</button>
+
+              <button
+                onClick={async () => {
+                  if (!confirm('Delete uploaded CV and revert to public file?')) return;
+                  const mod = await import('../services/cvService');
+                  await mod.deleteCV();
+                  mod.bumpCVVersion();
+                  setCvVersion(mod.getCVVersion());
+                  alert('Uploaded CV removed.');
+                }}
+                className="bg-red-800 px-4 py-2"
+              >Delete Uploaded CV</button>
+            </div>
+          </div>
         )}
 
       </div>

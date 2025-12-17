@@ -7,6 +7,7 @@ import { HERO_CONTENT, ABOUT_TEXT } from '../constants';
 import { getProjects, getSkills } from '../services/dataService';
 import { Project, Skill } from '../types';
 import { speak, playClickSound } from '../services/audioService';
+import { getCV as getStoredCV } from '../services/cvService';
 
 const ContentOverlay: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -92,10 +93,26 @@ const ContentOverlay: React.FC = () => {
   const handleDownloadCV = () => {
     playClickSound();
     speak("Downloading secure personnel file.");
-    const filePath = '/ashish%20dhamala%20cv.pdf';
-
-    // Primary: create anchor and click
+    // Prefer uploaded CV stored in IndexedDB (admin override)
     try {
+      const stored = await getStoredCV();
+      if (stored && stored.file) {
+        const blob = stored.file as Blob;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = stored.name || 'cv.pdf';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }, 200);
+        return;
+      }
+
+      // Fallback to public hosted file
+      const filePath = '/ashish%20dhamala%20cv.pdf';
       const link = document.createElement('a');
       link.href = filePath;
       link.download = 'ashish dhamala cv.pdf';
@@ -103,29 +120,8 @@ const ContentOverlay: React.FC = () => {
       link.click();
       setTimeout(() => document.body.removeChild(link), 150);
     } catch (err) {
-      console.warn('Anchor download failed, falling back to fetch', err);
-      // Fallback: fetch file and download as blob (works across environments)
-      fetch(filePath)
-        .then((res) => {
-          if (!res.ok) throw new Error(`Network response was not ok: ${res.status}`);
-          return res.blob();
-        })
-        .then((blob) => {
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'ashish dhamala cv.pdf';
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(() => {
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-          }, 200);
-        })
-        .catch((e) => {
-          console.error('Download failed', e);
-          alert('Unable to download CV. Please check the file or open it directly at ' + filePath);
-        });
+      console.error('Download error', err);
+      alert('Unable to download CV. Please check the file or try again.');
     }
   };
 
