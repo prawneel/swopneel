@@ -368,12 +368,39 @@ const AdminPanel: React.FC = () => {
                   if (!f) return;
                   if (f.type !== 'application/pdf') { alert('Please upload a PDF'); return; }
                   setCvUploading(true);
-                  const mod = await import('../services/cvService');
-                  await mod.saveCV(f);
-                  const ver = mod.bumpCVVersion();
-                  setCvVersion(ver);
-                  setCvUploading(false);
-                  alert('CV uploaded and version updated to ' + ver);
+
+                  // Try server upload first
+                  try {
+                    const arr = await f.arrayBuffer();
+                    const b64 = Buffer.from(arr).toString('base64');
+                    const resp = await fetch('/api/upload-cv', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ name: f.name, type: f.type, content: b64 })
+                    });
+                    if (resp.ok) {
+                      const j = await resp.json();
+                      setCvVersion(j.version || 1);
+                      setCvUploading(false);
+                      alert('CV uploaded to server and version updated to ' + j.version);
+                      return;
+                    }
+                  } catch (e) {
+                    console.warn('Server upload failed, falling back to local IndexedDB', e);
+                  }
+
+                  // Fallback to local store
+                  try {
+                    const mod = await import('../services/cvService');
+                    await mod.saveCV(f);
+                    const ver = mod.bumpCVVersion();
+                    setCvVersion(ver);
+                    alert('CV uploaded locally and version updated to ' + ver);
+                  } catch (e) {
+                    alert('Upload failed: ' + String(e));
+                  } finally {
+                    setCvUploading(false);
+                  }
                 }}
                 onDragOver={(e) => e.preventDefault()}
                 className="w-full border-2 border-dashed border-gray-700 p-6 rounded text-center text-gray-500 bg-black/40"
@@ -388,12 +415,38 @@ const AdminPanel: React.FC = () => {
                     if (!f) return;
                     if (f.type !== 'application/pdf') { alert('Please upload a PDF'); return; }
                     setCvUploading(true);
-                    const mod = await import('../services/cvService');
-                    await mod.saveCV(f);
-                    const ver = mod.bumpCVVersion();
-                    setCvVersion(ver);
-                    setCvUploading(false);
-                    alert('CV uploaded and version updated to ' + ver);
+
+                    try {
+                      const arr = await f.arrayBuffer();
+                      const b64 = Buffer.from(arr).toString('base64');
+                      const resp = await fetch('/api/upload-cv', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: f.name, type: f.type, content: b64 })
+                      });
+                      if (resp.ok) {
+                        const j = await resp.json();
+                        setCvVersion(j.version || 1);
+                        setCvUploading(false);
+                        alert('CV uploaded to server and version updated to ' + j.version);
+                        return;
+                      }
+                    } catch (e) {
+                      console.warn('Server upload failed, falling back to local IndexedDB', e);
+                    }
+
+                    // Fallback local
+                    try {
+                      const mod = await import('../services/cvService');
+                      await mod.saveCV(f);
+                      const ver = mod.bumpCVVersion();
+                      setCvVersion(ver);
+                      alert('CV uploaded locally and version updated to ' + ver);
+                    } catch (e) {
+                      alert('Upload failed: ' + String(e));
+                    } finally {
+                      setCvUploading(false);
+                    }
                   }}
                 />
               </div>
