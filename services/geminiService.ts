@@ -11,7 +11,7 @@ export const sendMessageToJarvis = async (message: string): Promise<string> => {
       const projects = getProjects();
       if (projects.length === 0) return 'No mission logs available.';
       const titles = projects.slice(0, 3).map(p => p.title).join(', ');
-      return `Available missions: ${titles}. Ask for details on any mission.`;
+      return `Available missions: ${titles}. Go to projects section for more details.`;
     }
 
     if (msg.includes('tech') || msg.includes('stack') || msg.includes('skill') || msg.includes('skills')) {
@@ -29,8 +29,15 @@ export const sendMessageToJarvis = async (message: string): Promise<string> => {
     }
 
     // Default small conversational replies
-    if (msg.includes('hello') || msg.includes('hi') || msg.includes('greetings')) {
-      return 'Greetings. J.A.R.V.I.S. online. How may I assist you?';
+    if (msg.includes('hello') || msg.includes('hi') || msg.includes('greetings') || msg.includes('how are you')) {
+      const greetings = [
+        'Hello. J.A.R.V.I.S. online.',
+        'Hi there — J.A.R.V.I.S. at your service.',
+        'Greetings. How may I assist you today?'
+      ];
+      const suggestions = "Try: 'Tell me about Holo-Interface', 'Show projects', 'Download CV'";
+      const pick = greetings[Math.floor(Math.random() * greetings.length)];
+      return `${pick} ${suggestions}`;
     }
 
     // If message looks like a command or url/open request, echo back
