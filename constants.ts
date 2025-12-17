@@ -49,7 +49,7 @@ export const PROJECTS: Project[] = [
 
 export const HERO_CONTENT = {
   headline: "I Build Futuristic Web Experiences",
-  subheadline: "SOFTWARE ENGINEER • 3D SPECIALIST",
+  subheadline: "SOFTWARE ENGINEER • TECH ENTHUSIAST",
   cta: "INITIATE PROTOCOL"
 };
 
