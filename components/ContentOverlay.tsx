@@ -9,12 +9,23 @@ import { Project, Skill } from '../types';
 import { speak, playClickSound } from '../services/audioService';
 import { getCV as getStoredCV } from '../services/cvService';
 import { getLocalMeta } from '../services/cvMetaService';
-// Using server-side MailJS forwarding; no client EmailJS
+import emailjs from '@emailjs/browser';
+import emailjsConfig from '../emailjs.config.json';
+// Using client-side EmailJS for contact form
 
 const ContactForm: React.FC = () => {
   const formRef = useRef<HTMLFormElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const PUBLIC_KEY = process.env.EMAILJS_USER_ID || emailjsConfig.publicKey || emailjsConfig.userId;
+      if (PUBLIC_KEY) emailjs.init(PUBLIC_KEY);
+    } catch (e) {
+      console.warn('EmailJS init skipped', e);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,29 +44,22 @@ const ContactForm: React.FC = () => {
       user_email = String(fd.get('user_email') || '');
       message = String(fd.get('message') || '');
 
-      // Primary: post to our serverless MailJS forwarder
-      const payload = { name: user_name, email: user_email, message };
-      let resp = await fetch('/api/send-mail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const SERVICE_ID = process.env.EMAILJS_SERVICE_ID || emailjsConfig.serviceId;
+      const TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || emailjsConfig.templateId;
+      const PUBLIC_KEY = process.env.EMAILJS_USER_ID || emailjsConfig.publicKey || emailjsConfig.userId;
 
-      if (!resp.ok) {
-        // Try Netlify function path
-        try {
-          resp = await fetch('/.netlify/functions/send-mail', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-        } catch (e) {
-          console.error('Netlify send-mail request failed', e);
-        }
+      const templateParams = {
+        name: user_name,
+        email: user_email,
+        message,
+        time: new Date().toLocaleString(),
+      };
+
+      if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY) {
+        throw new Error('EmailJS not configured (missing service/template/public key)');
       }
 
-      if (!resp.ok) throw new Error(`Mail send failed: ${resp.status}`);
-
+      await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY);
       setStatus('Message sent successfully');
       formRef.current.reset();
     } catch (err: any) {
@@ -63,10 +67,11 @@ const ContactForm: React.FC = () => {
       let msg = 'Send failed';
       try {
         if (err?.status) msg += `: ${err.status}`;
+        else if (err?.text) msg += ` - ${err.text}`;
         else if (err?.message) msg += ` - ${err.message}`;
         else msg += ` - ${JSON.stringify(err)}`;
       } catch (e) {}
-      setStatus(msg + ' — verify MailJS env variables and template mapping');
+      setStatus(msg + ' — verify EmailJS service/template/public key and template variables');
     } finally {
       setLoading(false);
     }

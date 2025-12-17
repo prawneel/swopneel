@@ -119,3 +119,37 @@ View your app in AI Studio: https://ai.studio/apps/temp/1
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Deploying to Hosting (Vercel / Netlify / Render)
+
+This project is ready for Vercel, Netlify, or Render. Use the steps below to deploy and set environment variables.
+
+- Build command: `npm run build`
+- Output directory: (Vite's default) handled by Vercel/Netlify/Render automatically
+
+Required environment variables (set in each platform's dashboard):
+
+- `EMAILJS_SERVICE_ID` — EmailJS service id (e.g., `service_6bwk7ey`)
+- `EMAILJS_TEMPLATE_ID` — EmailJS template id (e.g., `template_q5ccrhv`)
+- `EMAILJS_USER_ID` — EmailJS public key/user id (e.g., `hpNGItdN3uNBJOCpJ`)
+- Optional: `TO_EMAIL` — destination email for server-side templates (if used)
+
+Additional optional envs for admin CV upload flow:
+
+- `GITHUB_TOKEN`, `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_BRANCH` (default `main`)
+
+Vercel
+- Import the repository in Vercel, set the env vars in Project Settings → Environment Variables, and deploy. Serverless functions in `api/` will run on Vercel automatically.
+
+Netlify
+- Create a site from Git and connect the repo. Add the same environment variables in Site settings → Build & deploy → Environment. Netlify functions are in `netlify/functions/` and will auto-deploy.
+
+Render
+- Create a new Web Service (or Static Site if using static hosting) and connect to your repo. Provide the same env vars in the Render dashboard. For serverless functions, consider using Render's Background Workers or an external server if needed.
+
+After deployment
+- Open your deployed site and test the contact form — the client-side EmailJS implementation will run in the user's browser and send messages through EmailJS.
+
+Security note
+- Do not commit secret API keys to the repository. Use the `.env.example` as a template and set the real secrets in the hosting platform.
+
