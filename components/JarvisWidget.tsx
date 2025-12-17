@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { sendMessageToJarvis } from '../services/geminiService';
 import { speak, playClickSound, stopSpeaking } from '../services/audioService';
-import { ChatMessage } from '../types';
+import { ChatMessage, Project } from '../types';
+import { getProjects } from '../services/dataService';
 
 const JarvisWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +13,7 @@ const JarvisWidget: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [lastProject, setLastProject] = useState<Project | null>(null);
 
   const quickOptions = [
     { label: 'IDENTITY (ABOUT)', query: 'Tell me about Swopnil.' },
@@ -62,10 +64,32 @@ const JarvisWidget: React.FC = () => {
 
     try {
       const response = await sendMessageToJarvis(userMsg);
+
+      // Append model response
       setMessages(prev => [...prev, { role: 'model', text: response }]);
-      speak(response);
+
+      // Try to detect a project match from the user's message
+      const projects = getProjects();
+      const lowered = userMsg.toLowerCase();
+      const projectMatch = projects.find(p => {
+        const title = p.title.toLowerCase();
+        return lowered.includes(title) || title.includes(lowered) || lowered === title;
+      });
+
+      if (projectMatch) {
+        // Speak the project's long description (or description)
+        const description = projectMatch.longDescription || projectMatch.description || 'No further details available.';
+        speak(description);
+        // Add a follow-up model message indicating actions
+        setMessages(prev => [...prev, { role: 'model', text: `I found project "${projectMatch.title}". You can preview it, go to the projects section, or learn more in About.` }]);
+        setLastProject(projectMatch);
+      } else {
+        speak(response);
+        setLastProject(null);
+      }
     } catch (error) {
       setMessages(prev => [...prev, { role: 'model', text: "Error connecting to servers.", isError: true }]);
+      setLastProject(null);
     } finally {
       setIsLoading(false);
     }
@@ -133,6 +157,42 @@ const JarvisWidget: React.FC = () => {
                 </div>
               </div>
             ))}
+            {/* Project Action Buttons */}
+            {lastProject && (
+              <div className="flex gap-2 mt-2 px-1">
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    if (lastProject?.link) window.open(lastProject.link, '_blank');
+                  }}
+                  className="bg-cyan-500 text-black px-3 py-1 rounded text-xs font-bold"
+                >
+                  View Preview
+                </button>
+
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    const el = document.getElementById('projects');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="bg-cyan-900/20 text-cyan-300 px-3 py-1 rounded text-xs border border-cyan-500"
+                >
+                  Go To Projects
+                </button>
+
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    const el = document.getElementById('about');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="bg-transparent text-cyan-400 px-3 py-1 rounded text-xs border border-cyan-500"
+                >
+                  Click Here
+                </button>
+              </div>
+            )}
             {isLoading && (
               <div className="flex justify-start">
                 <div className="bg-gray-900/80 p-3 rounded-lg border border-gray-700">
