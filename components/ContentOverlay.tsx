@@ -92,12 +92,41 @@ const ContentOverlay: React.FC = () => {
   const handleDownloadCV = () => {
     playClickSound();
     speak("Downloading secure personnel file.");
-    const link = document.createElement('a');
-    link.href = '/pranilpoudelcv.pdf';
-    link.download = 'pranilpoudelcv.pdf';
-    document.body.appendChild(link);
-    link.click(); // Trigger the download
-    setTimeout(() => document.body.removeChild(link), 100);
+    const filePath = '/pranilpoudelcv.pdf';
+
+    // Primary: create anchor and click
+    try {
+      const link = document.createElement('a');
+      link.href = filePath;
+      link.download = 'pranilpoudelcv.pdf';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => document.body.removeChild(link), 150);
+    } catch (err) {
+      console.warn('Anchor download failed, falling back to fetch', err);
+      // Fallback: fetch file and download as blob (works across environments)
+      fetch(filePath)
+        .then((res) => {
+          if (!res.ok) throw new Error(`Network response was not ok: ${res.status}`);
+          return res.blob();
+        })
+        .then((blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'pranilpoudelcv.pdf';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+          }, 200);
+        })
+        .catch((e) => {
+          console.error('Download failed', e);
+          alert('Unable to download CV. Please check the file or open it directly at ' + filePath);
+        });
+    }
   };
 
   const onModalMouseMove = (e: React.MouseEvent) => {
