@@ -4,7 +4,6 @@ import Scene from './components/3d/Scene';
 import ContentOverlay from './components/ContentOverlay';
 import JarvisWidget from './components/JarvisWidget';
 import AdminPanel from './components/AdminPanel';
-import CustomCursor from './components/ui/CustomCursor';
 
 const App: React.FC = () => {
   const [scrolling, setScrolling] = useState(false);
@@ -60,7 +59,7 @@ const App: React.FC = () => {
   return (
     <main className={`relative w-full min-h-screen bg-[#050505] text-white overflow-hidden`}>
       
-      <CustomCursor />
+
 
       {/* 3D Scene Background */}
       <div className={`fixed inset-0 z-0 w-full h-full pointer-events-auto transition-transform duration-200`}>
