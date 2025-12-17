@@ -103,7 +103,64 @@ const ContentOverlay: React.FC = () => {
   const [projectIndex, setProjectIndex] = useState<number>(0);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [modalMouse, setModalMouse] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [currentRole, setCurrentRole] = useState<string>(HERO_CONTENT.subheadline || '');
+  const [currentRole, setCurrentRole] = useState<string>('');
+  // Typewriter refs
+  const roleIndexRef = useRef<number>(0);
+  const charIndexRef = useRef<number>(0);
+  const typingRef = useRef<boolean>(true);
+  const typeTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const raw = HERO_CONTENT.subheadline || '';
+    const roles = raw.split('•').map(r => r.trim()).filter(Boolean);
+    if (roles.length === 0) return;
+
+    const tick = () => {
+      const roleIdx = roleIndexRef.current;
+      const charIdx = charIndexRef.current;
+      const typing = typingRef.current;
+      const current = roles[roleIdx];
+
+      if (typing) {
+        // typing forward
+        if (charIdx <= current.length) {
+          setCurrentRole(current.slice(0, charIdx));
+          charIndexRef.current = charIdx + 1;
+          typeTimeoutRef.current = window.setTimeout(tick, 80);
+          return;
+        }
+        // pause at full
+        typingRef.current = false;
+        typeTimeoutRef.current = window.setTimeout(tick, 1200);
+        return;
+      } else {
+        // deleting
+        if (charIdx >= 0) {
+          setCurrentRole(current.slice(0, charIdx));
+          charIndexRef.current = charIdx - 1;
+          typeTimeoutRef.current = window.setTimeout(tick, 40);
+          return;
+        }
+        // move to next role
+        roleIndexRef.current = (roleIdx + 1) % roles.length;
+        typingRef.current = true;
+        charIndexRef.current = 0;
+        typeTimeoutRef.current = window.setTimeout(tick, 300);
+        return;
+      }
+    };
+
+    // initialize
+    roleIndexRef.current = 0;
+    charIndexRef.current = 0;
+    typingRef.current = true;
+    typeTimeoutRef.current = window.setTimeout(tick, 500);
+
+    return () => {
+      if (typeTimeoutRef.current) clearTimeout(typeTimeoutRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleProjectClick = (p: Project) => {
     setSelectedProject(p);
