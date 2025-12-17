@@ -10,6 +10,7 @@ import { speak, playClickSound } from '../services/audioService';
 import { getCV as getStoredCV } from '../services/cvService';
 import { getLocalMeta } from '../services/cvMetaService';
 import emailjs from '@emailjs/browser';
+import emailjsConfig from '../emailjs.config.json';
 
 const ContactForm: React.FC = () => {
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -27,15 +28,22 @@ const ContactForm: React.FC = () => {
       const user_email = String(fd.get('user_email') || '');
       const message = String(fd.get('message') || '');
 
+      const serviceId = (emailjsConfig as any)?.serviceId || 'service_ashish';
+      const templateId = (emailjsConfig as any)?.templateId || 'template_contact';
+      const publicKey = (emailjsConfig as any)?.publicKey || 'hpNGItdN3uNBJOCpJ';
+
       const templateParams = {
         to_email: 'ashish.221706@ncit.edu.np',
+        // Provide both naming conventions so the EmailJS template can use either
         user_name,
         user_email,
+        name: user_name,
+        email: user_email,
         message,
       };
 
-      // Send via EmailJS using provided public key. Replace service/template IDs if needed.
-      await emailjs.send('service_ashish', 'template_contact', templateParams, 'hpNGItdN3uNBJOCpJ');
+      // Send via EmailJS using configured values (or fallbacks).
+      await emailjs.send(serviceId, templateId, templateParams, publicKey);
 
       setStatus('Message sent successfully');
       formRef.current.reset();
@@ -98,10 +106,12 @@ const ContentOverlay: React.FC = () => {
     return () => window.removeEventListener('dataUpdated', handleUpdate);
   }, []);
 
-  // Initialize EmailJS with provided public key
+  // Initialize EmailJS with provided public key from config
   useEffect(() => {
     try {
-      emailjs.init('hpNGItdN3uNBJOCpJ');
+      const pub = emailjsConfig?.publicKey;
+      if (pub) emailjs.init(pub);
+      else console.warn('EmailJS publicKey not set in emailjs.config.json');
     } catch (e) {
       console.warn('EmailJS init failed', e);
     }
@@ -158,7 +168,7 @@ const ContentOverlay: React.FC = () => {
 
   const handleDownloadCV = async () => {
     playClickSound();
-    speak("Downloading secure personnel file.");
+    speak('Downloading secure personnel file.');
     try {
       // 1) Prefer uploaded CV stored in IndexedDB (admin override local)
       const stored = await getStoredCV();
@@ -173,29 +183,25 @@ const ContentOverlay: React.FC = () => {
         setTimeout(() => {
           window.URL.revokeObjectURL(url);
           document.body.removeChild(a);
-        }, 200);
+        }, 1000);
         return;
       }
 
-      // 2) Use server meta (cv_meta.json) if available to cache-bust and get filename
-      const meta = getLocalMeta();
-      let filename = 'ashish dhamala cv.pdf';
-      let version = Date.now();
-      if (meta && meta.filename) {
-        filename = meta.filename;
-        version = meta.version || Date.now();
-      }
+      // 2) Fallback to server-hosted CV using client-side meta for cache-busting
+      const meta = getLocalMeta() as any;
+      const filename = (meta && meta.filename) ? meta.filename : 'pranilpoudelcv.pdf';
+      const version = (meta && meta.version) ? meta.version : Date.now();
+      const href = `/${filename}?v=${version}`;
 
-      const filePath = `/${encodeURIComponent(filename)}?v=${version}`;
-      const link = document.createElement('a');
-      link.href = filePath;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => document.body.removeChild(link), 150);
+      const a2 = document.createElement('a');
+      a2.href = href;
+      a2.rel = 'noopener';
+      a2.download = filename;
+      document.body.appendChild(a2);
+      a2.click();
+      document.body.removeChild(a2);
     } catch (err) {
-      console.error('Download error', err);
-      alert('Unable to download CV. Please check the file or try again.');
+      console.error('Download CV failed', err);
     }
   };
 
