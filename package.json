@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "react": "^19.2.3",
+    "@emailjs/browser": "^3.9.0",
     "@google/genai": "^1.33.0",
     "@react-three/drei": "^10.7.7",
     "react-dom": "^19.2.3",

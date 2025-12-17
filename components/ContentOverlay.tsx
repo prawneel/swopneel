@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Section from './ui/Section';
 import HologramCard from './ui/HologramCard';
 import Navbar from './ui/Navbar';
@@ -9,6 +9,62 @@ import { Project, Skill } from '../types';
 import { speak, playClickSound } from '../services/audioService';
 import { getCV as getStoredCV } from '../services/cvService';
 import { getLocalMeta } from '../services/cvMetaService';
+import emailjs from '@emailjs/browser';
+
+const ContactForm: React.FC = () => {
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formRef.current) return;
+    setLoading(true);
+    setStatus(null);
+    try {
+      const fd = new FormData(formRef.current);
+      const user_name = String(fd.get('user_name') || '');
+      const user_email = String(fd.get('user_email') || '');
+      const message = String(fd.get('message') || '');
+
+      const templateParams = {
+        to_email: 'ashish.221706@ncit.edu.np',
+        user_name,
+        user_email,
+        message,
+      };
+
+      // Send via EmailJS using provided public key. Replace service/template IDs if needed.
+      await emailjs.send('service_ashish', 'template_contact', templateParams, 'hpNGItdN3uNBJOCpJ');
+
+      setStatus('Message sent successfully');
+      formRef.current.reset();
+    } catch (err) {
+      console.error('EmailJS send error', err);
+      setStatus('Send failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 text-left pointer-events-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input name="user_name" required type="text" placeholder="CODENAME" className="bg-gray-900/50 border border-gray-700 p-4 text-white focus:border-cyan-500 focus:bg-gray-900 focus:shadow-[0_0_15px_rgba(0,229,255,0.2)] focus:outline-none w-full transition-all font-mono-tech" />
+        <input name="user_email" required type="email" placeholder="FREQUENCY (EMAIL)" className="bg-gray-900/50 border border-gray-700 p-4 text-white focus:border-cyan-500 focus:bg-gray-900 focus:shadow-[0_0_15px_rgba(0,229,255,0.2)] focus:outline-none w-full transition-all font-mono-tech" />
+      </div>
+      <textarea name="message" required rows={4} placeholder="TRANSMISSION DATA" className="bg-gray-900/50 border border-gray-700 p-4 text-white focus:border-cyan-500 focus:bg-gray-900 focus:shadow-[0_0_15px_rgba(0,229,255,0.2)] focus:outline-none w-full transition-all font-mono-tech"></textarea>
+      <div className="flex items-center gap-4">
+        <button type="submit" disabled={loading} className="py-4 px-6 bg-gradient-to-r from-red-800 to-red-600 text-white font-bold tracking-[0.2em] uppercase hover:from-red-600 hover:to-red-500 transition-all shadow-[0_0_30px_rgba(200,16,46,0.4)]">
+          {loading ? 'SENDING...' : 'SEND TRANSMISSION'}
+        </button>
+        {status && (
+          <span className={`${status.toLowerCase().includes('sent') ? 'text-green-400' : 'text-red-400'} font-mono-tech`}>{status}</span>
+        )}
+      </div>
+    </form>
+  );
+};
 
 const ContentOverlay: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -40,6 +96,15 @@ const ContentOverlay: React.FC = () => {
     };
     window.addEventListener('dataUpdated', handleUpdate);
     return () => window.removeEventListener('dataUpdated', handleUpdate);
+  }, []);
+
+  // Initialize EmailJS with provided public key
+  useEffect(() => {
+    try {
+      emailjs.init('hpNGItdN3uNBJOCpJ');
+    } catch (e) {
+      console.warn('EmailJS init failed', e);
+    }
   }, []);
 
   useEffect(() => {
@@ -91,7 +156,7 @@ const ContentOverlay: React.FC = () => {
     setProjectIndex(prev => (prev - 1 + projects.length) % projects.length);
   };
 
-  const handleDownloadCV = () => {
+  const handleDownloadCV = async () => {
     playClickSound();
     speak("Downloading secure personnel file.");
     try {
@@ -368,23 +433,21 @@ const ContentOverlay: React.FC = () => {
             <h2 className="text-4xl md:text-6xl text-white font-bold mb-4 uppercase">Initialize Connection</h2>
             <p className="text-cyan-500 font-mono-tech mb-8 text-lg tracking-wider">SECURE CHANNEL OPEN</p>
             
-            <form className="space-y-4 text-left">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" placeholder="CODENAME" className="bg-gray-900/50 border border-gray-700 p-4 text-white focus:border-cyan-500 focus:bg-gray-900 focus:shadow-[0_0_15px_rgba(0,229,255,0.2)] focus:outline-none w-full transition-all font-mono-tech" />
-                <input type="email" placeholder="FREQUENCY (EMAIL)" className="bg-gray-900/50 border border-gray-700 p-4 text-white focus:border-cyan-500 focus:bg-gray-900 focus:shadow-[0_0_15px_rgba(0,229,255,0.2)] focus:outline-none w-full transition-all font-mono-tech" />
-              </div>
-              <textarea rows={4} placeholder="TRANSMISSION DATA" className="bg-gray-900/50 border border-gray-700 p-4 text-white focus:border-cyan-500 focus:bg-gray-900 focus:shadow-[0_0_15px_rgba(0,229,255,0.2)] focus:outline-none w-full transition-all font-mono-tech"></textarea>
-              <button className="w-full py-5 bg-gradient-to-r from-red-800 to-red-600 text-white font-bold tracking-[0.2em] uppercase hover:from-red-600 hover:to-red-500 transition-all shadow-[0_0_30px_rgba(200,16,46,0.4)] clip-path-slant">
-                SEND TRANSMISSION
-              </button>
-            </form>
+                  <ContactForm />
 
-            <div className="mt-12 flex justify-center gap-12 border-t border-gray-800 pt-8">
-              {['GITHUB', 'LINKEDIN', 'TWITTER'].map(social => (
-                <a key={social} href="#" className="text-gray-500 hover:text-white font-mono-tech transition-colors hover:drop-shadow-[0_0_5px_#ffffff] text-sm">
-                  [{social}]
-                </a>
-              ))}
+            <div className="mt-12 flex justify-center gap-8 border-t border-gray-800 pt-8">
+              <a href="https://github.com/12ashish-glitch" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white font-mono-tech transition-colors text-sm">
+                GITHUB
+              </a>
+              <a href="https://www.linkedin.com/in/ashish-dhamala-245b1b368/" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white font-mono-tech transition-colors text-sm">
+                LINKEDIN
+              </a>
+              <a href="https://www.instagram.com/swop_neeel/" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white font-mono-tech transition-colors text-sm">
+                INSTAGRAM
+              </a>
+              <a href="mailto:dhamalaswopnil@gmail.com" className="text-gray-500 hover:text-white font-mono-tech transition-colors text-sm">
+                EMAIL
+              </a>
             </div>
           </div>
         </div>

@@ -15,8 +15,8 @@ const Footer: React.FC = () => {
     <footer className="w-full py-8 bg-black/80 border-t border-cyan-900/50 backdrop-blur-sm relative z-20 mt-20 pointer-events-auto">
       <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex flex-col items-center md:items-start">
-          <h4 className="text-cyan-500 font-mono-tech tracking-widest uppercase font-bold text-lg">Stark Industries</h4>
-          <p className="text-gray-500 text-xs font-mono-tech mt-1">Advanced Weaponry & Web Development</p>
+          <h4 className="text-cyan-500 font-mono-tech tracking-widest uppercase font-bold text-lg">Swopnil Industries</h4>
+          <p className="text-gray-500 text-xs font-mono-tech mt-1">Software Engineering & Consulting</p>
         </div>
 
         <button 
