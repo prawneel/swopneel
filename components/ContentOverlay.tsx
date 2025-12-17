@@ -42,6 +42,9 @@ const ContactForm: React.FC = () => {
         message,
       };
 
+      // Debug log to help diagnose template/account mismatches
+      console.debug('EmailJS send', { serviceId, templateId, publicKey, templateParams });
+
       // Send via EmailJS using configured values (or fallbacks).
       await emailjs.send(serviceId, templateId, templateParams, publicKey);
 
@@ -119,11 +122,11 @@ const ContentOverlay: React.FC = () => {
   useEffect(() => {
     try {
       const pub = (emailjsConfig as any)?.publicKey;
-      const userId = (emailjsConfig as any)?.userId;
-      // Prefer explicit userId (legacy EmailJS user_... id), otherwise use the publicKey
-      const initId = userId || pub;
-      if (initId) emailjs.init(initId);
-      else console.warn('EmailJS init id not set in emailjs.config.json');
+      if (pub) {
+        emailjs.init(pub);
+      } else {
+        console.warn('EmailJS publicKey not set in emailjs.config.json');
+      }
     } catch (e) {
       console.warn('EmailJS init failed', e);
     }
