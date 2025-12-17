@@ -338,11 +338,11 @@ const ContentOverlay: React.FC = () => {
           <div className="mt-6 flex gap-4 text-cyan-500 font-mono-tech text-xs border-t border-gray-800 pt-4">
              <div className="flex flex-col">
                 <span className="text-gray-500">CURRENT LOC</span>
-                <span>SAN FRANCISCO, CA</span>
+                <span>KATHMANDU, NP</span>
              </div>
              <div className="flex flex-col">
                 <span className="text-gray-500">OPERATING SYSTEM</span>
-                <span>STARK OS v4.2</span>
+                <span>SWOPNIL OS v4.2</span>
              </div>
           </div>
         </HologramCard>
