@@ -61,6 +61,39 @@ const ContactForm: React.FC = () => {
       } catch (e) {
         /* ignore */
       }
+      // Try server-side fallback using SendGrid endpoints
+      try {
+        const payload = { name: user_name, email: user_email, message };
+        // Try Vercel function first
+        let resp = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!resp.ok) {
+          // Try Netlify function
+          try {
+            resp = await fetch('/.netlify/functions/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+          } catch (e2) {
+            console.error('Netlify fallback failed', e2);
+          }
+        }
+
+        if (resp && resp.ok) {
+          setStatus('Message sent successfully (SendGrid)');
+          formRef.current.reset();
+          setLoading(false);
+          return;
+        }
+      } catch (e3) {
+        console.error('SendGrid fallback attempt failed', e3);
+      }
+
       setStatus(msg + '\n\nIf this persists, verify `serviceId`, `templateId` and that the template uses variables: {{name}} or {{user_name}}, {{email}} or {{user_email}}, and {{message}}');
     } finally {
       setLoading(false);
