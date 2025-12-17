@@ -52,6 +52,17 @@ const App: React.FC = () => {
     };
   }, [isAdmin]);
 
+  // Start polling CV meta (so downloads pick up server-updated CVs)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    import('./services/cvMetaService').then(mod => {
+      mod.startPolling(10000);
+    }).catch(() => {});
+    return () => {
+      import('./services/cvMetaService').then(mod => mod.stopPolling()).catch(() => {});
+    };
+  }, []);
+
   if (isAdmin) {
     return <AdminPanel />;
   }

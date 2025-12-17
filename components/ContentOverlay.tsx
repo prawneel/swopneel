@@ -8,6 +8,7 @@ import { getProjects, getSkills } from '../services/dataService';
 import { Project, Skill } from '../types';
 import { speak, playClickSound } from '../services/audioService';
 import { getCV as getStoredCV } from '../services/cvService';
+import { getLocalMeta } from '../services/cvMetaService';
 
 const ContentOverlay: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -93,8 +94,8 @@ const ContentOverlay: React.FC = () => {
   const handleDownloadCV = () => {
     playClickSound();
     speak("Downloading secure personnel file.");
-    // Prefer uploaded CV stored in IndexedDB (admin override)
     try {
+      // 1) Prefer uploaded CV stored in IndexedDB (admin override local)
       const stored = await getStoredCV();
       if (stored && stored.file) {
         const blob = stored.file as Blob;
@@ -111,11 +112,19 @@ const ContentOverlay: React.FC = () => {
         return;
       }
 
-      // Fallback to public hosted file
-      const filePath = '/ashish%20dhamala%20cv.pdf';
+      // 2) Use server meta (cv_meta.json) if available to cache-bust and get filename
+      const meta = getLocalMeta();
+      let filename = 'ashish dhamala cv.pdf';
+      let version = Date.now();
+      if (meta && meta.filename) {
+        filename = meta.filename;
+        version = meta.version || Date.now();
+      }
+
+      const filePath = `/${encodeURIComponent(filename)}?v=${version}`;
       const link = document.createElement('a');
       link.href = filePath;
-      link.download = 'ashish dhamala cv.pdf';
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       setTimeout(() => document.body.removeChild(link), 150);
