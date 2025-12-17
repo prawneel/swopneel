@@ -419,11 +419,20 @@ const AdminPanel: React.FC = () => {
                     try {
                       const arr = await f.arrayBuffer();
                       const b64 = Buffer.from(arr).toString('base64');
-                      const resp = await fetch('/api/upload-cv', {
+                      // Try Vercel endpoint first
+                      let resp = await fetch('/api/upload-cv', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ name: f.name, type: f.type, content: b64 })
                       });
+                      // If not ok, try Netlify functions path
+                      if (!resp.ok) {
+                        resp = await fetch('/.netlify/functions/upload-cv', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ name: f.name, type: f.type, content: b64 })
+                        });
+                      }
                       if (resp.ok) {
                         const j = await resp.json();
                         setCvVersion(j.version || 1);
