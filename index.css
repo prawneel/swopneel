@@ -1,0 +1,22 @@
+/* Minimal index.css to satisfy Vite build and provide base styles */
+:root { --bg: #050505; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg);
+  font-family: 'Rajdhani', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #ffffff;
+}
+.font-mono-tech { font-family: 'Share Tech Mono', monospace; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Small helper classes used in the app */
+.uppercase { text-transform: uppercase; }
+.transition-all { transition: all 0.2s ease-in-out; }
+
+/* Ensure images don't exceed container */
+img { max-width: 100%; height: auto; display: block; }
