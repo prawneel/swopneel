@@ -47,9 +47,18 @@ const ContactForm: React.FC = () => {
 
       setStatus('Message sent successfully');
       formRef.current.reset();
-    } catch (err) {
+    } catch (err: any) {
       console.error('EmailJS send error', err);
-      setStatus('Send failed');
+      let msg = 'Send failed';
+      try {
+        if (err?.status) msg += `: ${err.status}`;
+        if (err?.text) msg += ` - ${err.text}`;
+        else if (err?.message) msg += ` - ${err.message}`;
+        else msg += ` - ${JSON.stringify(err)}`;
+      } catch (e) {
+        /* ignore */
+      }
+      setStatus(msg + '\n\nIf this persists, verify `serviceId`, `templateId` and that the template uses variables: {{name}} or {{user_name}}, {{email}} or {{user_email}}, and {{message}}');
     } finally {
       setLoading(false);
     }
@@ -109,9 +118,12 @@ const ContentOverlay: React.FC = () => {
   // Initialize EmailJS with provided public key from config
   useEffect(() => {
     try {
-      const pub = emailjsConfig?.publicKey;
-      if (pub) emailjs.init(pub);
-      else console.warn('EmailJS publicKey not set in emailjs.config.json');
+      const pub = (emailjsConfig as any)?.publicKey;
+      const userId = (emailjsConfig as any)?.userId;
+      // Prefer explicit userId (legacy EmailJS user_... id), otherwise use the publicKey
+      const initId = userId || pub;
+      if (initId) emailjs.init(initId);
+      else console.warn('EmailJS init id not set in emailjs.config.json');
     } catch (e) {
       console.warn('EmailJS init failed', e);
     }
