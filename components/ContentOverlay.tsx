@@ -9,8 +9,7 @@ import { Project, Skill } from '../types';
 import { speak, playClickSound } from '../services/audioService';
 import { getCV as getStoredCV } from '../services/cvService';
 import { getLocalMeta } from '../services/cvMetaService';
-import emailjs from '@emailjs/browser';
-import emailjsConfig from '../emailjs.config.json';
+// Using server-side MailJS forwarding; no client EmailJS
 
 const ContactForm: React.FC = () => {
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -22,79 +21,52 @@ const ContactForm: React.FC = () => {
     if (!formRef.current) return;
     setLoading(true);
     setStatus(null);
+
+    // declare here so catch block can reference for diagnostics if needed
+    let user_name = '';
+    let user_email = '';
+    let message = '';
+
     try {
       const fd = new FormData(formRef.current);
-      const user_name = String(fd.get('user_name') || '');
-      const user_email = String(fd.get('user_email') || '');
-      const message = String(fd.get('message') || '');
+      user_name = String(fd.get('user_name') || '');
+      user_email = String(fd.get('user_email') || '');
+      message = String(fd.get('message') || '');
 
-      const serviceId = (emailjsConfig as any)?.serviceId || 'service_ashish';
-      const templateId = (emailjsConfig as any)?.templateId || 'template_contact';
-      const publicKey = (emailjsConfig as any)?.publicKey || 'hpNGItdN3uNBJOCpJ';
+      // Primary: post to our serverless MailJS forwarder
+      const payload = { name: user_name, email: user_email, message };
+      let resp = await fetch('/api/send-mail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-      const templateParams = {
-        to_email: 'ashish.221706@ncit.edu.np',
-        // Provide both naming conventions so the EmailJS template can use either
-        user_name,
-        user_email,
-        name: user_name,
-        email: user_email,
-        message,
-      };
+      if (!resp.ok) {
+        // Try Netlify function path
+        try {
+          resp = await fetch('/.netlify/functions/send-mail', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } catch (e) {
+          console.error('Netlify send-mail request failed', e);
+        }
+      }
 
-      // Debug log to help diagnose template/account mismatches
-      console.debug('EmailJS send', { serviceId, templateId, publicKey, templateParams });
-
-      // Send via EmailJS using configured values (or fallbacks).
-      await emailjs.send(serviceId, templateId, templateParams, publicKey);
+      if (!resp.ok) throw new Error(`Mail send failed: ${resp.status}`);
 
       setStatus('Message sent successfully');
       formRef.current.reset();
     } catch (err: any) {
-      console.error('EmailJS send error', err);
+      console.error('Mail send error', err);
       let msg = 'Send failed';
       try {
         if (err?.status) msg += `: ${err.status}`;
-        if (err?.text) msg += ` - ${err.text}`;
         else if (err?.message) msg += ` - ${err.message}`;
         else msg += ` - ${JSON.stringify(err)}`;
-      } catch (e) {
-        /* ignore */
-      }
-      // Try server-side fallback using SendGrid endpoints
-      try {
-        const payload = { name: user_name, email: user_email, message };
-        // Try Vercel function first
-        let resp = await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        if (!resp.ok) {
-          // Try Netlify function
-          try {
-            resp = await fetch('/.netlify/functions/send-email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-            });
-          } catch (e2) {
-            console.error('Netlify fallback failed', e2);
-          }
-        }
-
-        if (resp && resp.ok) {
-          setStatus('Message sent successfully (SendGrid)');
-          formRef.current.reset();
-          setLoading(false);
-          return;
-        }
-      } catch (e3) {
-        console.error('SendGrid fallback attempt failed', e3);
-      }
-
-      setStatus(msg + '\n\nIf this persists, verify `serviceId`, `templateId` and that the template uses variables: {{name}} or {{user_name}}, {{email}} or {{user_email}}, and {{message}}');
+      } catch (e) {}
+      setStatus(msg + ' — verify MailJS env variables and template mapping');
     } finally {
       setLoading(false);
     }
@@ -119,90 +91,20 @@ const ContactForm: React.FC = () => {
   );
 };
 
+// Main overlay component
 const ContentOverlay: React.FC = () => {
+  const [projects, setProjects] = useState<Project[]>(getProjects());
+  const [skills, setSkills] = useState<Skill[]>(getSkills());
+  const [projectIndex, setProjectIndex] = useState<number>(0);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [modalMouse, setModalMouse] = useState({ x: 0, y: 0 });
-  const [textIndex, setTextIndex] = useState(0);
-  const [currentRole, setCurrentRole] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
-  
-  // Dynamic Data State
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [skills, setSkills] = useState<Skill[]>([]);
-  
-  const [projectIndex, setProjectIndex] = useState(0); // For carousel
+  const [modalMouse, setModalMouse] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [currentRole, setCurrentRole] = useState<string>(HERO_CONTENT.subheadline || '');
 
-  const roles = ["DEVELOPER", "DESIGNER", "TECH ENTHUSIAST"];
-  const typingSpeed = 100;
-  const deletingSpeed = 50;
-  const pauseTime = 1500;
-
-  useEffect(() => {
-    // Initial Load
-    setProjects(getProjects());
-    setSkills(getSkills());
-
-    // Listen for Admin Updates
-    const handleUpdate = () => {
-      setProjects(getProjects());
-      setSkills(getSkills());
-    };
-    window.addEventListener('dataUpdated', handleUpdate);
-    return () => window.removeEventListener('dataUpdated', handleUpdate);
-  }, []);
-
-  // Initialize EmailJS with provided public key from config
-  useEffect(() => {
-    try {
-      const pub = (emailjsConfig as any)?.publicKey;
-      if (pub) {
-        emailjs.init(pub);
-      } else {
-        console.warn('EmailJS publicKey not set in emailjs.config.json');
-      }
-    } catch (e) {
-      console.warn('EmailJS init failed', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleTyping = () => {
-      const fullText = roles[textIndex];
-      
-      if (isDeleting) {
-        setCurrentRole(fullText.substring(0, currentRole.length - 1));
-      } else {
-        setCurrentRole(fullText.substring(0, currentRole.length + 1));
-      }
-
-      if (!isDeleting && currentRole === fullText) {
-        setTimeout(() => setIsDeleting(true), pauseTime);
-      } else if (isDeleting && currentRole === '') {
-        setIsDeleting(false);
-        setTextIndex((prev) => (prev + 1) % roles.length);
-      }
-    };
-
-    const timer = setTimeout(handleTyping, isDeleting ? deletingSpeed : typingSpeed);
-    return () => clearTimeout(timer);
-  }, [currentRole, isDeleting, textIndex]);
-
-  const handleProjectClick = (project: Project) => {
-    playClickSound();
-    setSelectedProject(project);
-    if (project.longDescription) {
-      speak(project.longDescription);
-    } else {
-      speak(`Accessing secure files for ${project.title}.`);
-    }
+  const handleProjectClick = (p: Project) => {
+    setSelectedProject(p);
   };
 
-  const closeProjectModal = () => {
-    playClickSound();
-    setSelectedProject(null);
-    setModalMouse({ x: 0, y: 0 });
-    window.speechSynthesis.cancel();
-  };
+  const closeProjectModal = () => setSelectedProject(null);
 
   const nextProjects = () => {
     playClickSound();
