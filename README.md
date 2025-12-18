@@ -103,11 +103,6 @@ The validator attempts to POST a small base64 payload to `http://localhost:3000/
 
 </div>
 
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/temp/1
 
 ## Run Locally
 
